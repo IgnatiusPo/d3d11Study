@@ -12,7 +12,7 @@ struct vs_out {
 
 vs_out vs_main(vs_in input) {
     vs_out output = (vs_out)0; // zero the memory first
-    output.position_clip = float4(input.position_local, 0.f,  1.0);
+    output.position_clip = float4(input.position_local, 1.f,  1.f);
     output.texCoord = input.texCoord;
     return output;
 }

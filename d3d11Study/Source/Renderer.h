@@ -2,7 +2,7 @@
 #include "VertexBuffer.h"
 #include <vector>
 #include "glm/glm.hpp"
-#define GBUFFER_COUNT 2
+#define GBUFFER_COUNT 3
 
 struct GLFWwindow;
 class VertexBuffer;
@@ -19,7 +19,7 @@ class Renderer
 public:
 	void Init(GLFWwindow* window);
 
-	void ClearRTV();
+	void ClearBackbufferRTV();
 	void ClearGBufferRTVs();
 	void Present();
 	void InitViewportFromWindow(GLFWwindow* window);
@@ -43,6 +43,7 @@ public:
 	{
 		glm::mat4 _view;
 		glm::mat4 _projection;
+		glm::vec4 _viewWorldPos;
 	};
 	struct PerModelData
 	{
@@ -54,8 +55,9 @@ public:
 		char padding[4];
 	};
 	void CreateViewBuffer();
-	void UpdateViewBuffer(const glm::mat4& view, const glm::mat4 projection);
+	void UpdateViewBuffer(const glm::mat4& view, const glm::mat4& projection, const glm::vec4& viewWorldPos);
 	void BindVertexViewBuffer();
+	void BindPixelViewBuffer();
 
 	void CreatePerModelBuffer();
 	void UpdatePerModelBuffer(const glm::mat4& model);
@@ -70,6 +72,7 @@ public:
 	// passes 
 	void GeometryPass(const Scene* scene, const Camera* camera);
 	void RenderLight();
+	void RenderSSAO();
 private:
 	// shaders
 	// create simple vertex shader that takes coordinated in NDC
@@ -78,6 +81,7 @@ private:
 	ShaderID GetBasicLightPixelShader();
 	ShaderID GetDefaultModelVertexShader();
 	ShaderID GetDefaultDeferredPixelShader();
+	ShaderID GetSSAOPixelShader();
 
 	void SetupLightingParameters(ShaderID PixelShaderID);
 public:
@@ -86,6 +90,7 @@ public:
 	ShaderID _pixelShaderLighting = InvalidShaderID;
 	ShaderID _vertexShaderDefaultModel = InvalidShaderID;
 	ShaderID _pixelShaderDefaultDeferred = InvalidShaderID;
+	ShaderID _pixelShaderSSAO = InvalidShaderID;
 
 	VertexShader* GetVertexShaderByID(ShaderID ID);
 	PixelShader*	 GetPixelShaderByID(ShaderID ID);
@@ -107,6 +112,11 @@ public:
 	struct ID3D11Texture2D*				_GBufferTextureArray[GBUFFER_COUNT];
 	struct ID3D11RenderTargetView*		_GBufferRenderTargetViewArray[GBUFFER_COUNT];
 	struct ID3D11ShaderResourceView*	_GBufferShaderResourceViewArray[GBUFFER_COUNT];
+
+	struct ID3D11Texture2D* _SSAOTexture;
+	struct ID3D11RenderTargetView* _SSAO_RTV;
+	struct ID3D11ShaderResourceView* _SSAO_SRV;
+
 
 	struct ID3D11SamplerState*			_samplerStateClamp;
 	struct D3D11_VIEWPORT				_viewport;

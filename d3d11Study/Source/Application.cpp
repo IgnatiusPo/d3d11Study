@@ -159,11 +159,19 @@ int Application::Init()
 
     // initialize scene 
     _scene.AddObjectToScene(LoadModel<ModelType::STL>("res/stl/Einstein.stl", _renderer));
+    _scene.AddObjectToScene(LoadModel<ModelType::STL>("res/stl/moon_city_final.stl ", _renderer));
+
     glm::mat4 modelMat = glm::mat4(1.f);
-    modelMat = glm::translate(modelMat, glm::vec3(0.f, -50.f, 100.f));
+    modelMat = glm::translate(modelMat, glm::vec3(100.f, -50.f, 100.f));
     modelMat = glm::rotate(modelMat, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
     modelMat = glm::rotate(modelMat, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
     _scene._sceneObjects[0].SetModelMatrix(modelMat);
+    modelMat = glm::mat4(1.f);
+    modelMat = glm::translate(modelMat, glm::vec3(0.f, -50.f, 100.f));
+    modelMat = glm::rotate(modelMat, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
+    modelMat = glm::rotate(modelMat, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
+    _scene._sceneObjects[1].SetModelMatrix(modelMat);
+
 
 	return 0;
 }
@@ -187,7 +195,7 @@ void Application::Tick()
 
 	/* clear the back buffer */
     _renderer->SetBackBufferRenderTarget();
-    _renderer->ClearRTV();
+    _renderer->ClearBackbufferRTV();
 
     _renderer->InitViewportFromWindow(_window);
     _renderer->ResetViewport();
@@ -198,8 +206,6 @@ void Application::Tick()
 		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
-	// draw quad
-    _renderer->DrawQuadFS();
 
     // draw triangle
     _renderer->SetInputLayoutFromVertexShader(&vertex_shader);
@@ -227,7 +233,7 @@ void Application::Tick()
     //projection = glm::translate(glm::scale(projection, glm::vec3(0.f, 0.f, 0.5f)), glm::vec3(0.f, 0.f, 0.5f));
     //projection = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.5f)) * glm::scale(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.5f)) * projection;
     
-    _renderer->UpdateViewBuffer(view, projection);
+    _renderer->UpdateViewBuffer(view, projection, glm::vec4(_camera._position, 1.f));
     _renderer->BindVertexViewBuffer();
 
     //_renderer->Draw(&vBufferCube);
@@ -266,8 +272,10 @@ void Application::Tick()
     _renderer->GeometryPass(&_scene, &_camera);
 
     _renderer->RenderLight();
+    // draw quad
+    _renderer->DrawQuadFS();
 
-
+    _renderer->DrawCube();
 	// present 
     _renderer->Present();
 

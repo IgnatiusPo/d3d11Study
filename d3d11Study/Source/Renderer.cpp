@@ -177,7 +177,7 @@ void Renderer::Init(GLFWwindow* window)
 	// Depth test parameters
 	enabledDepthStencilDesc.DepthEnable = true;
 	enabledDepthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	enabledDepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	enabledDepthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 	// Stencil test parameters
 	enabledDepthStencilDesc.StencilEnable = false;
 	enabledDepthStencilDesc.StencilReadMask = 0xFF;
@@ -258,6 +258,43 @@ void Renderer::Init(GLFWwindow* window)
 		_device->CreateShaderResourceView(_GBufferTextureArray[i], &srvDesc, &_GBufferShaderResourceViewArray[i]);
 	}
 
+	//create SSAO texture
+	{
+		D3D11_TEXTURE2D_DESC SSAOTexture;
+		SSAOTexture.Width = framebufferDesc.Width;
+		SSAOTexture.Height = framebufferDesc.Height;
+		SSAOTexture.MipLevels = 1;
+		SSAOTexture.ArraySize = 1;
+		SSAOTexture.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		SSAOTexture.SampleDesc.Count = 1;
+		SSAOTexture.SampleDesc.Quality = 0;
+		SSAOTexture.Usage = D3D11_USAGE_DEFAULT;
+		SSAOTexture.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		SSAOTexture.CPUAccessFlags = 0;
+		SSAOTexture.MiscFlags = 0;
+
+		_device->CreateTexture2D(&SSAOTexture, NULL, &_SSAOTexture);
+
+		// Setup the description of the render target views
+		D3D11_RENDER_TARGET_VIEW_DESC SSAORtvDesc;
+		SSAORtvDesc.Format = SSAOTexture.Format;
+		SSAORtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		SSAORtvDesc.Texture2D.MipSlice = 0;
+
+		_device->CreateRenderTargetView(_SSAOTexture, &SSAORtvDesc, &_SSAO_RTV);
+
+
+		// Setup the description of the shader resource view.
+		D3D11_SHADER_RESOURCE_VIEW_DESC SSAOSrvDesc;
+
+		SSAOSrvDesc.Format = textureDesc.Format;
+		SSAOSrvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		SSAOSrvDesc.Texture2D.MostDetailedMip = 0;
+		SSAOSrvDesc.Texture2D.MipLevels = 1;
+
+		_device->CreateShaderResourceView(_SSAOTexture, &SSAOSrvDesc, &_SSAO_SRV);
+	}
+
 
 	// create known sampler states
 	D3D11_SAMPLER_DESC samplerDesc;
@@ -301,7 +338,7 @@ void Renderer::Init(GLFWwindow* window)
 	GetSimpleColorPixelShader();
 }
 
-void Renderer::ClearRTV()
+void Renderer::ClearBackbufferRTV()
 {
 	_deviceContext->ClearRenderTargetView(_backBufferRTV, background_colour);
 	// Clear the depth buffer.
@@ -438,10 +475,11 @@ void Renderer::CreateViewBuffer()
 
 }
 
-void Renderer::UpdateViewBuffer(const glm::mat4& view, const glm::mat4 projection)
+void Renderer::UpdateViewBuffer(const glm::mat4& view, const glm::mat4& projection, const glm::vec4& viewWorldPos)
 {
 	_view._view = view;
 	_view._projection = projection;
+	_view._viewWorldPos = viewWorldPos;
 
 	_deviceContext->UpdateSubresource(_viewBuffer, 0, 0, &_view, 0, 0);
 }
@@ -449,6 +487,11 @@ void Renderer::UpdateViewBuffer(const glm::mat4& view, const glm::mat4 projectio
 void Renderer::BindVertexViewBuffer()
 {
 	_deviceContext->VSSetConstantBuffers(0, 1, &_viewBuffer);
+}
+
+void Renderer::BindPixelViewBuffer()
+{
+	_deviceContext->PSSetConstantBuffers(0, 1, &_viewBuffer);
 }
 
 void Renderer::CreatePerModelBuffer()
@@ -498,7 +541,7 @@ void Renderer::UpdateLightBuffer(const glm::vec3& direction)
 
 void Renderer::BindLightBuffer()
 {
-	_deviceContext->PSSetConstantBuffers(0, 1, &_lightBuffer);
+	_deviceContext->PSSetConstantBuffers(1, 1, &_lightBuffer);
 }
 
 void Renderer::GeometryPass(const Scene* scene, const Camera* camera)
@@ -522,7 +565,7 @@ void Renderer::GeometryPass(const Scene* scene, const Camera* camera)
 	projection = glm::perspectiveFovLH_ZO(glm::radians(45.f), _viewport.Width, _viewport.Height, 0.1f, 1000.f); //todo setup near and far properly
 
 
-	UpdateViewBuffer(view, projection);
+	UpdateViewBuffer(view, projection, glm::vec4(camera->_position, 1.f));
 	BindVertexViewBuffer();
 
 	for (int i = 0; i < scene->_sceneObjects.size(); ++i)
@@ -560,6 +603,34 @@ void Renderer::RenderLight()
 	ID3D11ShaderResourceView* nullSRV = nullptr;
 	_deviceContext->PSSetShaderResources(0, 1, &nullSRV);
 	_deviceContext->PSSetShaderResources(1, 1, &nullSRV);
+	_deviceContext->PSSetShaderResources(2, 1, &nullSRV);
+
+	EnableDepthStencil();
+}
+
+void Renderer::RenderSSAO()
+{
+	_deviceContext->ClearRenderTargetView(_SSAO_RTV, background_colour);
+
+	DisableDepthStencil();
+	ResetViewport();
+	//SetSSAO_RTV();
+
+	VertexShader* vertexShader = GetVertexShaderByID(GetNDCVertexShader());
+	SetVertexBuffer(&quad_vBuffer);
+	SetInputLayoutFromVertexShader(vertexShader);
+	SetVertexShader(vertexShader);
+	BindVertexViewBuffer();
+
+	ShaderID pixelShaderID = GetSSAOPixelShader();
+	SetupLightingParameters(pixelShaderID);
+
+
+
+	Draw(&quad_vBuffer);
+
+
+
 
 }
 
@@ -674,6 +745,25 @@ ShaderID Renderer::GetDefaultDeferredPixelShader()
 	return NewID;
 }
 
+ShaderID Renderer::GetSSAOPixelShader()
+{
+	if (_pixelShaderSSAO != InvalidShaderID)
+	{
+		return _pixelShaderSSAO;
+	}
+
+	ShaderID NewID = (ShaderID)Renderer::PixelShaders.size();
+
+	PixelShader shader("Shaders/SimpleColorPixelShader.hlsl", "ps_main");
+	shader.CompileShader();
+	shader.CreatePixelShader(_device);
+
+	Renderer::PixelShaders.push_back(shader);
+	_pixelShaderSSAO = NewID;
+	return NewID;
+
+}
+
 void Renderer::SetupLightingParameters(ShaderID PixelShaderID)
 {
 	PixelShader* pixelShader = GetPixelShaderByID(PixelShaderID);
@@ -683,6 +773,8 @@ void Renderer::SetupLightingParameters(ShaderID PixelShaderID)
 	_deviceContext->PSSetShaderResources(0, 1, &_GBufferShaderResourceViewArray[0]);
 	// GBuffer normal
 	_deviceContext->PSSetShaderResources(1, 1, &_GBufferShaderResourceViewArray[1]);
+	// GBuffer position
+	_deviceContext->PSSetShaderResources(2, 1, &_GBufferShaderResourceViewArray[2]);
 
 	_deviceContext->PSSetSamplers(0, 1, &_samplerStateClamp);
 
@@ -690,6 +782,7 @@ void Renderer::SetupLightingParameters(ShaderID PixelShaderID)
 	glm::vec3 lightDirection = glm::vec3(0.f, -0.5f, 0.5f);
 	UpdateLightBuffer(lightDirection);
 	BindLightBuffer();
+	BindPixelViewBuffer();
 }
 
 VertexShader* Renderer::GetVertexShaderByID(ShaderID ID)
