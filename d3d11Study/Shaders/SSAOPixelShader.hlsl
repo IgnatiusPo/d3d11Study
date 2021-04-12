@@ -35,8 +35,9 @@ float4 ps_main(vs_out input) : SV_TARGET{
     float3x3 TBN = transpose(float3x3(tangent, bitangent, (float3)normal));
    
     float occlusion = 0.0;
-    float radius = 10.f;
+    float radius = 7.f;
     float bias = 0.005f;
+    float maxZDiffer = 2.f;
     for (int i = 0; i < kernelSize; ++i)
     {
         float3 samplePosition = mul(TBN, (float3)kernelSamples[i]);
@@ -49,7 +50,7 @@ float4 ps_main(vs_out input) : SV_TARGET{
         samplePositionScreenSpace.y = 1.f - samplePositionScreenSpace.y;
 
         float4 sampleFromTexture = positionTexture.Sample(ClampPointSampler, samplePositionScreenSpace.xy);
-        float rangeCheck = 1.f - step(radius / 2.f, abs(sampleFromTexture.z - samplePosition.z));
+        float rangeCheck = 1.f - step(maxZDiffer, abs(sampleFromTexture.z - samplePosition.z));
 
         occlusion += ( (sampleFromTexture.z <= samplePosition.z - bias)  ? 1.0f : 0.f) * rangeCheck;
     }

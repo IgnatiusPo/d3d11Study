@@ -11,7 +11,8 @@ float Gauss( float2 texCoord, float depthCenter, float weight )
 {
     float depth = positionTexture.Sample(ClampPointSampler, texCoord).z;
     float depthDiff = abs(depthCenter - depth);
-    float depthCheck = smoothstep(0.0f, 1.f, 10.f / depthDiff);
+    float maxZDiffer = 2.f;
+    float depthCheck = smoothstep(0.0f, 1.f, maxZDiffer / depthDiff);
     return lerp( 1.f , inputTexture.Sample(ClampPointSampler, texCoord), depthCheck) * weight;
 }
 
