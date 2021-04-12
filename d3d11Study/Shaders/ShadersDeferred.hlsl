@@ -16,7 +16,7 @@ cbuffer PerObjectData : register(b1)
 struct vs_out {
     float4 position_clip : SV_POSITION; // required output of VS
     float3 normal : NORMAL;
-    float3 position_world : WORLD_POSITION;
+    float3 position_view : WORLD_POSITION;
 };
 
 vs_out vs_main(vs_in input) {
@@ -24,12 +24,15 @@ vs_out vs_main(vs_in input) {
     float4 position = float4(input.position_local, 1.0f);
     position = mul(modelMat, position);
 
-    output.position_world = position;
+    //output.position_world = position;
 
     position = mul(view, position);
+    output.position_view = position;
 	position = mul(projection, position);
     output.position_clip = position;
-    output.normal = mul(modelMat, input.normal);
+    float3x3 normalMatrix = (float3x3)mul(view, modelMat);
+    //output.normal = mul(modelMat, input.normal);
+    output.normal = mul(normalMatrix, input.normal);
     return output;
 }
 
@@ -44,7 +47,7 @@ PixelOutput ps_main(vs_out input) : SV_TARGET
 {
   PixelOutput output;
   output.color = float4(1.0, 0.0, 1.0, 1.0);
-  output.normal = float4(input.normal, 1.f);
-  output.position = float4(input.position_world, 1.f);
+  output.normal = normalize(float4(input.normal, 0.f));
+  output.position = float4(input.position_view, 1.f);
   return output;
 }

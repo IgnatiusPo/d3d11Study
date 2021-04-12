@@ -271,6 +271,7 @@ void Application::Tick()
     //_renderer->Draw(_scene._sceneObjects[0]._meshes[0].GetVertexBuffer());
     _renderer->GeometryPass(&_scene, &_camera);
 
+    _renderer->RenderSSAO();
     _renderer->RenderLight();
     // draw quad
     _renderer->DrawQuadFS();

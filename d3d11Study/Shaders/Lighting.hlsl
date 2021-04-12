@@ -24,13 +24,15 @@ float4 ps_main(vs_out input) : SV_TARGET{
     float4 albedo = colorTexture.Sample(ClampPointSampler, input.texCoord);
     float4 ambientColor = albedo * 0.1; // hardcoded ambient component
     float4 normal = normalTexture.Sample(ClampPointSampler, input.texCoord);
-    float4 worldPosition = positionTexture.Sample(ClampPointSampler, input.texCoord);
+    float4 viewPosition = positionTexture.Sample(ClampPointSampler, input.texCoord);
     
-    float3 lightDir = -lightDirection;
+    float3 lightDirectionView = mul(view, lightDirection);
+    float3 lightDir = -lightDirectionView;
     float lightIntensity = saturate(dot(normal.xyz, lightDir));
     float4 diffuseColor = saturate(albedo * lightIntensity);
 
-    float3 viewDir = (float3)normalize(viewWorldPos - worldPosition);
+    float4 viewOriginPosition = mul(view, viewWorldPos);
+    float3 viewDir = (float3)normalize(viewOriginPosition - viewPosition);
     float3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot((float3)normal, halfwayDir), 0.f), 16.0);
     spec *= 0.2f;

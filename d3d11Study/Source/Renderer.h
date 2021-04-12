@@ -2,7 +2,13 @@
 #include "VertexBuffer.h"
 #include <vector>
 #include "glm/glm.hpp"
-#define GBUFFER_COUNT 3
+enum class GBufferType
+{
+	Color,
+	Normal,
+	Position,
+	Num
+};
 
 struct GLFWwindow;
 class VertexBuffer;
@@ -27,6 +33,7 @@ public:
 	void SetViewport(D3D11_VIEWPORT* viewport);
 	void SetBackBufferRenderTarget();
 	void SetRenderTargetsGBuffer();
+	void SetSSAORenderTarget();
 	void EnableDepthStencil();
 	void DisableDepthStencil();
 
@@ -67,12 +74,17 @@ public:
 	void UpdateLightBuffer(const glm::vec3& direction);
 	void BindLightBuffer();
 
+	void CreateSSAOKernelBuffer();
+	void BindSSAOKernelBuffer();
+
+
 
 
 	// passes 
 	void GeometryPass(const Scene* scene, const Camera* camera);
 	void RenderLight();
 	void RenderSSAO();
+	void BlurPass(struct ID3D11ShaderResourceView* input, struct ID3D11ShaderResourceView* output, struct ID3D11RenderTargetView* freeRTV = nullptr, struct ID3D11ShaderResourceView* freeSRVOut = nullptr);
 private:
 	// shaders
 	// create simple vertex shader that takes coordinated in NDC
@@ -82,8 +94,13 @@ private:
 	ShaderID GetDefaultModelVertexShader();
 	ShaderID GetDefaultDeferredPixelShader();
 	ShaderID GetSSAOPixelShader();
+	ShaderID GetSimpleBlurPixelShader();
+	ShaderID GetHorizontalBlurPixelShader();
+	ShaderID GetVerticalBlurPixelShader();
 
 	void SetupLightingParameters(ShaderID PixelShaderID);
+	void SetupSSAOPatameters(ShaderID PixelShaderID);
+	void SetupBlurPatameters(ShaderID PixelShaderID, struct ID3D11ShaderResourceView* input);
 public:
 	ShaderID vertexShaderNDC = InvalidShaderID;
 	ShaderID pixelShaderSimpleColor = InvalidShaderID;
@@ -91,6 +108,10 @@ public:
 	ShaderID _vertexShaderDefaultModel = InvalidShaderID;
 	ShaderID _pixelShaderDefaultDeferred = InvalidShaderID;
 	ShaderID _pixelShaderSSAO = InvalidShaderID;
+	ShaderID _pixelShaderSimpleBlur = InvalidShaderID;
+	ShaderID _pixelShaderHorizontalBlur = InvalidShaderID;
+	ShaderID _pixelShaderVerticalBlur = InvalidShaderID;
+
 
 	VertexShader* GetVertexShaderByID(ShaderID ID);
 	PixelShader*	 GetPixelShaderByID(ShaderID ID);
@@ -109,16 +130,33 @@ public:
 
 	struct ID3D11RasterizerState* _rasterizerState;
 
-	struct ID3D11Texture2D*				_GBufferTextureArray[GBUFFER_COUNT];
-	struct ID3D11RenderTargetView*		_GBufferRenderTargetViewArray[GBUFFER_COUNT];
-	struct ID3D11ShaderResourceView*	_GBufferShaderResourceViewArray[GBUFFER_COUNT];
+	struct ID3D11Texture2D*				_GBufferTextureArray[(int)GBufferType::Num];
+	struct ID3D11RenderTargetView*		_GBufferRenderTargetViewArray[(int)GBufferType::Num];
+	struct ID3D11ShaderResourceView*	_GBufferShaderResourceViewArray[(int)GBufferType::Num];
 
 	struct ID3D11Texture2D* _SSAOTexture;
 	struct ID3D11RenderTargetView* _SSAO_RTV;
 	struct ID3D11ShaderResourceView* _SSAO_SRV;
 
+	struct ID3D11Texture2D* _SSAONoiseTexture;
+	struct ID3D11ShaderResourceView* _SSAONoiseSRV;
+
+
+	struct ID3D11ShaderResourceView* _SSAO_BlurredSRV;
+
+
+	struct ID3D11Texture2D* _BlurHorizontalTexture;
+	struct ID3D11RenderTargetView* _Blur_HorizontalRTV;
+	struct ID3D11ShaderResourceView* _Blur_HorizontalSRV;
+
+	struct ID3D11Texture2D* _BlurTexture;
+	struct ID3D11RenderTargetView* _Blur_RTV;
+	struct ID3D11ShaderResourceView* _Blur_SRV;
+
+
 
 	struct ID3D11SamplerState*			_samplerStateClamp;
+	struct ID3D11SamplerState*			_samplerStateWrap;
 	struct D3D11_VIEWPORT				_viewport;
 
 	// constant buffers
@@ -131,6 +169,9 @@ public:
 
 	LightData _lightData;
 	ID3D11Buffer* _lightBuffer;
+
+	std::vector<glm::vec4>	_ssaoKernel;
+	ID3D11Buffer* _ssaoKernelBuffer;
 
 	
 	// static variables
