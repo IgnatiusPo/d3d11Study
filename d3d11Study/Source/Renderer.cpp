@@ -163,11 +163,11 @@ void Renderer::Init(GLFWwindow* window)
 	descDepth.Height = framebufferDesc.Height;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
-	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.Format = DXGI_FORMAT_R24G8_TYPELESS;
 	descDepth.SampleDesc.Count = 1;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
-	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
 	hr = _device->CreateTexture2D(&descDepth, NULL, &_depthStencilBuffer);
@@ -210,6 +210,15 @@ void Renderer::Init(GLFWwindow* window)
 	depthDescView.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	depthDescView.Texture2D.MipSlice = 0;
 	hr = _device->CreateDepthStencilView(_depthStencilBuffer, &depthDescView, &_depthStencilView);
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC DepthSRV;
+
+	DepthSRV.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	DepthSRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	DepthSRV.Texture2D.MostDetailedMip = 0;
+	DepthSRV.Texture2D.MipLevels = 1;
+
+	hr = _device->CreateShaderResourceView(_depthStencilBuffer, &DepthSRV, &_depthStencilSRV);
 	//@todo need to release?
 	//_depthStencilBuffer->Release();
 
@@ -325,7 +334,7 @@ void Renderer::Init(GLFWwindow* window)
 			sample = glm::normalize(sample);
 			sample *= randomFloats(randomGenerator);
 
-			float scale = (float)i / 64.0;
+			float scale = (float)i / (float)kernelSize;
 			scale = lerp(0.1f, 1.0f, scale * scale);
 			sample *= scale;
 			_ssaoKernel.push_back(sample);
@@ -759,7 +768,7 @@ void Renderer::RenderSSAO()
 void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceView* output, ID3D11RenderTargetView* freeRTV, ID3D11ShaderResourceView* freeSRVOut)
 {
 	_deviceContext->ClearRenderTargetView(_Blur_HorizontalRTV, background_colour);
-	_deviceContext->OMSetRenderTargets(1, &_Blur_HorizontalRTV, _depthStencilView);
+	_deviceContext->OMSetRenderTargets(1, &_Blur_HorizontalRTV, nullptr);
 
 	ShaderID pixelShaderHBlurID = GetHorizontalBlurPixelShader();
 	SetupBlurPatameters(pixelShaderHBlurID, input);
@@ -769,13 +778,13 @@ void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceVie
 	if (freeRTV != nullptr && freeSRVOut != nullptr)
 	{
 		_deviceContext->ClearRenderTargetView(freeRTV, background_colour);
-		_deviceContext->OMSetRenderTargets(1, &freeRTV, _depthStencilView);
+		_deviceContext->OMSetRenderTargets(1, &freeRTV, nullptr);
 		output = freeSRVOut;
 	}
 	else
 	{
 		_deviceContext->ClearRenderTargetView(_Blur_RTV, background_colour);
-		_deviceContext->OMSetRenderTargets(1, &_Blur_RTV, _depthStencilView);
+		_deviceContext->OMSetRenderTargets(1, &_Blur_RTV, nullptr);
 		output = _Blur_SRV;
 	}
 	ShaderID pixelShaderVBlurID = GetVerticalBlurPixelShader();
@@ -1017,6 +1026,9 @@ void Renderer::SetupBlurPatameters(ShaderID PixelShaderID, ID3D11ShaderResourceV
 	SetPixelShader(pixelShader);
 
 	_deviceContext->PSSetShaderResources(0, 1, &input);
+	_deviceContext->PSSetShaderResources(1, 1, &_depthStencilSRV);
+	_deviceContext->PSSetShaderResources(2, 1, &_GBufferShaderResourceViewArray[(int)GBufferType::Position]);
+
 
 	_deviceContext->PSSetSamplers(0, 1, &_samplerStateClamp);
 

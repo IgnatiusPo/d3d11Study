@@ -9,9 +9,11 @@ cbuffer View : register(b0)
     matrix projection;
     float4 viewWorldPos;
 };
+#define kernelSize 64
+
 cbuffer Kernel
 {
-    float4 kernelSamples[64];
+    float4 kernelSamples[kernelSize];
 };
 struct vs_out {
     float4 position_clip : SV_POSITION; // required output of VS
@@ -30,11 +32,10 @@ float4 ps_main(vs_out input) : SV_TARGET{
 
     float3 tangent = normalize(random - normal * dot(random, normal));
     float3 bitangent = cross(tangent, normal);
-    float3x3 TBN = float3x3(tangent, bitangent, (float3)normal);
+    float3x3 TBN = transpose(float3x3(tangent, bitangent, (float3)normal));
    
     float occlusion = 0.0;
-    int kernelSize = 64;
-    float radius = 1.f;
+    float radius = 10.f;
     float bias = 0.005f;
     for (int i = 0; i < kernelSize; ++i)
     {
@@ -48,7 +49,9 @@ float4 ps_main(vs_out input) : SV_TARGET{
         samplePositionScreenSpace.y = 1.f - samplePositionScreenSpace.y;
 
         float4 sampleFromTexture = positionTexture.Sample(ClampPointSampler, samplePositionScreenSpace.xy);
-        occlusion += (sampleFromTexture.z <= samplePosition.z - bias ? 1.0f : 0.f);
+        float rangeCheck = 1.f - step(radius / 2.f, abs(sampleFromTexture.z - samplePosition.z));
+
+        occlusion += ( (sampleFromTexture.z <= samplePosition.z - bias)  ? 1.0f : 0.f) * rangeCheck;
     }
     occlusion = 1.0f - (occlusion / kernelSize);
     output = float4(occlusion, occlusion, occlusion, 1.f);

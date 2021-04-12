@@ -125,6 +125,7 @@ public:
 	struct ID3D11DepthStencilState* _depthEnabledStencilState;
 	struct ID3D11DepthStencilState* _depthDisabledStencilState;
 	struct ID3D11DepthStencilView* _depthStencilView;
+	struct ID3D11ShaderResourceView* _depthStencilSRV;
 	struct ID3D11Texture2D* _depthStencilBuffer;
 
 
