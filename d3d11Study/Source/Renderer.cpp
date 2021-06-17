@@ -322,7 +322,7 @@ void Renderer::Init(GLFWwindow* window)
 		{
 			return a * (1.f - t) + b * t;
 		};
-		int kernelSize = 64;
+		int kernelSize = 32;
 		for (unsigned int i = 0; i < kernelSize; ++i)
 		{
 			glm::vec4 sample(
@@ -720,6 +720,7 @@ void Renderer::RenderLight()
 	_deviceContext->PSSetShaderResources(0, 1, &nullSRV);
 	_deviceContext->PSSetShaderResources(1, 1, &nullSRV);
 	_deviceContext->PSSetShaderResources(2, 1, &nullSRV);
+	_deviceContext->PSSetShaderResources(3, 1, &nullSRV);
 
 	EnableDepthStencil();
 }
@@ -765,7 +766,7 @@ void Renderer::RenderSSAO()
 
 }
 
-void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceView* output, ID3D11RenderTargetView* freeRTV, ID3D11ShaderResourceView* freeSRVOut)
+void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceView*& output, ID3D11RenderTargetView* freeRTV, ID3D11ShaderResourceView* freeSRVOut)
 {
 	_deviceContext->ClearRenderTargetView(_Blur_HorizontalRTV, background_colour);
 	_deviceContext->OMSetRenderTargets(1, &_Blur_HorizontalRTV, nullptr);
@@ -794,6 +795,9 @@ void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceVie
 
 	ID3D11ShaderResourceView* nullSRV = nullptr;
 	_deviceContext->PSSetShaderResources(0, 1, &nullSRV);
+	_deviceContext->PSSetShaderResources(1, 1, &nullSRV);
+	_deviceContext->PSSetShaderResources(2, 1, &nullSRV);
+
 
 }
 
@@ -992,6 +996,8 @@ void Renderer::SetupLightingParameters(ShaderID PixelShaderID)
 	_deviceContext->PSSetShaderResources(1, 1, &_GBufferShaderResourceViewArray[(unsigned int)GBufferType::Normal]);
 	// GBuffer position
 	_deviceContext->PSSetShaderResources(2, 1, &_GBufferShaderResourceViewArray[(unsigned int)GBufferType::Position]);
+	// SSAO
+	_deviceContext->PSSetShaderResources(3, 1, &_SSAO_BlurredSRV);
 
 	_deviceContext->PSSetSamplers(0, 1, &_samplerStateClamp);
 

@@ -24,6 +24,8 @@ public:
 	//@todo maybe should be in rednerer? 
 	Camera _camera;
 
+	bool _useSSAO = true;
+
 	Application();
 
 	int Init();

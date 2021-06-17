@@ -9,7 +9,7 @@ cbuffer View : register(b0)
     matrix projection;
     float4 viewWorldPos;
 };
-#define kernelSize 64
+#define kernelSize 32
 
 cbuffer Kernel
 {
@@ -37,7 +37,7 @@ float4 ps_main(vs_out input) : SV_TARGET{
     float occlusion = 0.0;
     float radius = 7.f;
     float bias = 0.005f;
-    float maxZDiffer = 2.f;
+    float maxZDiffer = 3.f;
     for (int i = 0; i < kernelSize; ++i)
     {
         float3 samplePosition = mul(TBN, (float3)kernelSamples[i]);

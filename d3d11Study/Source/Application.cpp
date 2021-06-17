@@ -162,7 +162,9 @@ int Application::Init()
     _scene.AddObjectToScene(LoadModel<ModelType::STL>("res/stl/moon_city_final.stl ", _renderer));
 
     glm::mat4 modelMat = glm::mat4(1.f);
-    modelMat = glm::translate(modelMat, glm::vec3(100.f, -50.f, 100.f));
+
+    modelMat = glm::scale(modelMat, glm::vec3(0.2f, 0.2f, 0.2f));
+    modelMat = glm::translate(modelMat, glm::vec3(0.f, -35.f, 400.f));
     modelMat = glm::rotate(modelMat, glm::radians(180.f), glm::vec3(0.f, 1.f, 0.f));
     modelMat = glm::rotate(modelMat, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
     _scene._sceneObjects[0].SetModelMatrix(modelMat);
@@ -271,7 +273,10 @@ void Application::Tick()
     //_renderer->Draw(_scene._sceneObjects[0]._meshes[0].GetVertexBuffer());
     _renderer->GeometryPass(&_scene, &_camera);
 
-    _renderer->RenderSSAO();
+    //if (_useSSAO)
+    //{
+        _renderer->RenderSSAO();
+    //}
     _renderer->RenderLight();
     // draw quad
     _renderer->DrawQuadFS();
@@ -307,6 +312,8 @@ void Application::ProcessInput()
         _camera.ProcessKeyboardInput(CameraMovement::LEFT, _deltaTime);
     if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS)
         _camera.ProcessKeyboardInput(CameraMovement::RIGHT, _deltaTime);
+    if (glfwGetKey(_window, GLFW_KEY_F1) == GLFW_PRESS)
+        _useSSAO = !_useSSAO;
 
 
 }

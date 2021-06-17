@@ -84,7 +84,7 @@ public:
 	void GeometryPass(const Scene* scene, const Camera* camera);
 	void RenderLight();
 	void RenderSSAO();
-	void BlurPass(struct ID3D11ShaderResourceView* input, struct ID3D11ShaderResourceView* output, struct ID3D11RenderTargetView* freeRTV = nullptr, struct ID3D11ShaderResourceView* freeSRVOut = nullptr);
+	void BlurPass(struct ID3D11ShaderResourceView* input, struct ID3D11ShaderResourceView*& output, struct ID3D11RenderTargetView* freeRTV = nullptr, struct ID3D11ShaderResourceView* freeSRVOut = nullptr);
 private:
 	// shaders
 	// create simple vertex shader that takes coordinated in NDC

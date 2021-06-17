@@ -22,12 +22,6 @@ float4 ps_main(vs_out input) : SV_TARGET
     float2 textureSize;
     inputTexture.GetDimensions(textureSize.x, textureSize.y);
     float2 texelSize = 1.f / textureSize;
-  //  float4 result;
-  //  for (int x = -2; x < 3; ++x)
-  //  {
-		//float2 offset = float2(float(x), 0.f) * texelSize;
-		//result += inputTexture.Sample(ClampPointSampler, input.texCoord + offset);
-  //  }
     
     float4 sum = 0.f;
     float depthCenter = positionTexture.Sample(ClampPointSampler, input.texCoord).z;
@@ -43,7 +37,6 @@ float4 ps_main(vs_out input) : SV_TARGET
     sum += Gauss( input.texCoord + float2(3.0f * texelSize.x, 0.f), depthCenter, 0.0540540541);
     sum += Gauss( input.texCoord + float2(4.0f * texelSize.x, 0.f), depthCenter, 0.0162162162);
 
-    //output = result / (5.f);
     output = float4(sum.rgb, depthCenter);
     return output;
 }
