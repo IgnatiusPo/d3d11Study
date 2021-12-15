@@ -20,9 +20,13 @@ class Application
 	float _lastFrame = 0.f;
 	bool _shouldClose = false;
 
+
 public:
 	//@todo maybe should be in rednerer? 
 	Camera _camera;
+
+	// ImGUI
+	bool _ImGuiToggled = false;
 
 	bool _useSSAO = true;
 
@@ -34,5 +38,6 @@ public:
 	void ProcessInput();
 	void SwapBuffers();
 
+	glm::vec3 _lightDirection;
 };
 

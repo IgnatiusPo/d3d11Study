@@ -29,7 +29,7 @@ public:
 		float yaw = YAW, float pitch = PITCH, float sensitivity = 0.1f, float zoom = 45.f, float cameraSpeed = 20.5f);
 
 	void ProcessKeyboardInput(CameraMovement direction, float deltaTime);
-	void ProcessMouseInput(float x, float y);
+	void ProcessMouseInput(float x, float y, bool onlyCacheValues);
 	void ProcessScrollInput(float yOffset, float& fov);
 	glm::mat4 GetViewMatrix() const;
 

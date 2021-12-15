@@ -8,6 +8,9 @@
 #include "d3dcompiler.h"
 #include "assert.h"
 //#include "Model.h"
+#include "imgui/imgui.h"
+#include "imgui/dx11/imgui_impl_dx11.h"
+#include "imgui/dx11/imgui_impl_glfw.h"
 
 #pragma comment( lib, "user32" )          // link against the win32 library
 #pragma comment( lib, "d3d11.lib" )       // direct3D library
@@ -41,7 +44,7 @@ namespace Callbacks
     void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     {
         Application* app = (Application*)(glfwGetWindowUserPointer(window));
-        app->_camera.ProcessMouseInput(xpos, ypos);
+		app->_camera.ProcessMouseInput(xpos, ypos, app->_ImGuiToggled);
     }
 
     void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -55,7 +58,7 @@ namespace Callbacks
     }
 }
 
-Application::Application() : _camera(glm::vec3(0.f, 0.f, -10.f))
+Application::Application() : _camera(glm::vec3(0.f, 0.f, -10.f)), _lightDirection(glm::vec3(0.f, -0.5f, 0.5f))
 {
     _window = NULL;
     //device_ptr = NULL;
@@ -84,6 +87,24 @@ int Application::Init()
     glfwSetWindowUserPointer(_window, this);
 
     _renderer->Init(_window);
+
+    // Dear ImGui
+    ImGui::CreateContext();
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+
+    // Setup Platform/Renderer backends
+    HWND hwnd = glfwGetWin32Window(_window);
+
+    ImGui_ImplGlfw_InitForOther(_window, true);
+    ImGui_ImplDX11_Init(_renderer->_device, _renderer->_deviceContext);
+
+
+
 
     // shader 
     UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
@@ -182,10 +203,9 @@ void Application::Tick()
 {
     float CurrentFrame = (float)glfwGetTime();
     _deltaTime = CurrentFrame - _lastFrame;
-    _lastFrame = CurrentFrame;
 
 	///**** handle user input and other window events ****/
-    //MSG msg = {};
+ //   MSG msg = {};
 	//if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 	//    TranslateMessage(&msg);
 	//    DispatchMessage(&msg);
@@ -193,6 +213,31 @@ void Application::Tick()
 	//if (msg.message == WM_QUIT) { _shouldClose = true; }
     glfwPollEvents();
     ProcessInput();
+
+    if (_ImGuiToggled)
+    {
+		// Start the Dear ImGui frame
+		ImGui_ImplDX11_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		bool showDemo = true;
+		ImGui::ShowDemoWindow(&showDemo);
+
+        // the SUN
+        ImGui::Begin("Sun settings");
+        float direction[3] = {
+            _lightDirection.x,
+            _lightDirection.y,
+            _lightDirection.z
+        };
+        ImGui::SliderFloat3("Sun direction", direction, -1.0f, 1.0f);
+        ImGui::End();
+        _lightDirection.x = direction[0];
+        _lightDirection.y = direction[1];
+        _lightDirection.z = direction[2];
+    }
+
+
 
 
 	/* clear the back buffer */
@@ -277,14 +322,26 @@ void Application::Tick()
     //{
         _renderer->RenderSSAO();
     //}
-    _renderer->RenderLight();
+    _renderer->RenderLight(_lightDirection);
     // draw quad
-    _renderer->DrawQuadFS();
+    //_renderer->DrawFullScreenQuad();
+    _renderer->SetPixelShader(_renderer->GetPixelShaderByID(_renderer->GetSimpleColorPixelShader()));
+    _renderer->DrawFullScreenTriangle();
 
-    _renderer->DrawCube();
+    //_renderer->DrawCube();
+
+    if (_ImGuiToggled)
+    {
+		//render ImGui
+		ImGui::Render();
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    }
+
+
 	// present 
     _renderer->Present();
 
+    _lastFrame = CurrentFrame;
 }
 
 bool Application::ShouldClose()
@@ -294,15 +351,39 @@ bool Application::ShouldClose()
 
 void Application::ProcessInput()
 {
-    glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(_window, Callbacks::mouse_callback);
     glfwSetScrollCallback(_window, Callbacks::scroll_callback);
+
 
     if (glfwGetKey(_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         _shouldClose = true;
         //glfwSetWindowShouldClose(_window, GLFW_TRUE);
     }
+
+    // ImGui
+    static bool ImGuiButtonPressed = glfwGetKey(_window, GLFW_KEY_TAB) == GLFW_PRESS;
+    if (glfwGetKey(_window, GLFW_KEY_TAB) == GLFW_PRESS)
+    {
+        if (!ImGuiButtonPressed)
+        {
+            _ImGuiToggled = !_ImGuiToggled;
+        }
+        ImGuiButtonPressed = true;
+    }
+    else
+    {
+        ImGuiButtonPressed = false;
+    }
+
+    // do not send io signals to app if ImGui is toggled
+    if (_ImGuiToggled)
+    {
+
+		glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        return;
+    }
+	glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS)
         _camera.ProcessKeyboardInput(CameraMovement::FORWARD, _deltaTime);

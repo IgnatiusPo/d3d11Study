@@ -41,6 +41,11 @@
     <ClInclude Include="Source\VertexBuffer.h" />
     <ClInclude Include="Source\VertexShader.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Dependencies\imgui\dx11\dx11.vcxproj">
+      <Project>{50670172-aafe-4f08-ae52-4ae5606cbf4b}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -144,7 +149,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Source;$(SolutionDir)Dependencies;$(SolutionDir)Dependencies\GLFW\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source;$(SolutionDir)Dependencies;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\imgui\dx11;$(SolutionDir)Dependencies\imgui\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

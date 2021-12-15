@@ -24,11 +24,13 @@ class Renderer
 
 public:
 	void Init(GLFWwindow* window);
+	void Init(HWND hwnd);
 
 	void ClearBackbufferRTV();
 	void ClearGBufferRTVs();
 	void Present();
 	void InitViewportFromWindow(GLFWwindow* window);
+	void InitViewportFromWindow(HWND hwnd);
 	void ResetViewport();
 	void SetViewport(D3D11_VIEWPORT* viewport);
 	void SetBackBufferRenderTarget();
@@ -37,13 +39,17 @@ public:
 	void EnableDepthStencil();
 	void DisableDepthStencil();
 
-	void DrawQuadFS();
+	// note: z-value of these would be 1.f, so make sure to disable depth test if you need overlayed fullscreen pass
+	void DrawFullScreenQuad();
+	void DrawFullScreenTriangle();
+
 	void DrawCube();
 	void Draw(unsigned int vertexCount, unsigned int start = 0);
 	void Draw(const VertexBuffer* vBuffer, unsigned int start = 0);
 	void SetVertexBuffer(const VertexBuffer* vBuffer);
-	void SetVertexShader(const VertexShader* shader);
-	void SetPixelShader(const PixelShader* shader);
+	void SetVertexShader(const VertexShader* shader = nullptr);
+	void SetPixelShader(const PixelShader* shader = nullptr);
+	void SetInputLayout(ID3D11InputLayout* layout);
 	void SetInputLayoutFromVertexShader(const VertexShader* shader);
 
 	struct View
@@ -82,14 +88,14 @@ public:
 
 	// passes 
 	void GeometryPass(const Scene* scene, const Camera* camera);
-	void RenderLight();
+	void RenderLight(const glm::vec3& lightDirection);
 	void RenderSSAO();
 	void BlurPass(struct ID3D11ShaderResourceView* input, struct ID3D11ShaderResourceView*& output, struct ID3D11RenderTargetView* freeRTV = nullptr, struct ID3D11ShaderResourceView* freeSRVOut = nullptr);
-private:
+public:
 	// shaders
-	// create simple vertex shader that takes coordinated in NDC
 	ShaderID GetNDCVertexShader();
 	ShaderID GetSimpleColorPixelShader();
+	ShaderID GetFullScreenTriangleVertexShader();
 	ShaderID GetBasicLightPixelShader();
 	ShaderID GetDefaultModelVertexShader();
 	ShaderID GetDefaultDeferredPixelShader();
@@ -98,12 +104,14 @@ private:
 	ShaderID GetHorizontalBlurPixelShader();
 	ShaderID GetVerticalBlurPixelShader();
 
-	void SetupLightingParameters(ShaderID PixelShaderID);
+private:
+	void SetupLightingParameters(ShaderID PixelShaderID, const glm::vec3& lightDirection);
 	void SetupSSAOPatameters(ShaderID PixelShaderID);
 	void SetupBlurPatameters(ShaderID PixelShaderID, struct ID3D11ShaderResourceView* input);
 public:
 	ShaderID vertexShaderNDC = InvalidShaderID;
 	ShaderID pixelShaderSimpleColor = InvalidShaderID;
+	ShaderID vertexShaderFSTriangle = InvalidShaderID;
 	ShaderID _pixelShaderLighting = InvalidShaderID;
 	ShaderID _vertexShaderDefaultModel = InvalidShaderID;
 	ShaderID _pixelShaderDefaultDeferred = InvalidShaderID;

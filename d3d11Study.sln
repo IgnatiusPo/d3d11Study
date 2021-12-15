@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30406.217
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "d3d11Study", "d3d11Study\d3d11Study.vcxproj", "{60075B02-9C29-4A63-AF0E-F1FE050F8285}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImguiDX11", "Dependencies\imgui\dx11\dx11.vcxproj", "{50670172-AAFE-4F08-AE52-4AE5606CBF4B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{60075B02-9C29-4A63-AF0E-F1FE050F8285}.Release|x64.Build.0 = Release|x64
 		{60075B02-9C29-4A63-AF0E-F1FE050F8285}.Release|x86.ActiveCfg = Release|Win32
 		{60075B02-9C29-4A63-AF0E-F1FE050F8285}.Release|x86.Build.0 = Release|Win32
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Debug|x64.ActiveCfg = Debug|x64
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Debug|x64.Build.0 = Debug|x64
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Debug|x86.ActiveCfg = Debug|Win32
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Debug|x86.Build.0 = Debug|Win32
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Release|x64.ActiveCfg = Release|x64
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Release|x64.Build.0 = Release|x64
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Release|x86.ActiveCfg = Release|Win32
+		{50670172-AAFE-4F08-AE52-4AE5606CBF4B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

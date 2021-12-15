@@ -27,7 +27,7 @@ void Camera::ProcessKeyboardInput(CameraMovement direction, float deltaTime)
 	}
 }
 
-void Camera::ProcessMouseInput(float x, float y)
+void Camera::ProcessMouseInput(float x, float y, bool onlyCacheValues)
 {
     static bool firstMouse = true;
 	if (firstMouse)
@@ -41,6 +41,10 @@ void Camera::ProcessMouseInput(float x, float y)
 	float yOffset = _lastCameraY - (float)y;
 	_lastCameraX = (float)x;
 	_lastCameraY = (float)y;
+	if (onlyCacheValues)
+	{
+		return;
+	}
 
 	xOffset *= _sensitivity;
 	yOffset *= _sensitivity;
