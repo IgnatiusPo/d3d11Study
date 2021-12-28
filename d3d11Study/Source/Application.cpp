@@ -104,7 +104,8 @@ int Application::Init()
     ImGui_ImplDX11_Init(_renderer->_device, _renderer->_deviceContext);
 
 
-
+    // particle system
+    _particleSystem.Init(_renderer->_device);
 
     // shader 
     UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
@@ -195,6 +196,17 @@ int Application::Init()
     modelMat = glm::rotate(modelMat, glm::radians(-90.f), glm::vec3(1.f, 0.f, 0.f));
     _scene._sceneObjects[1].SetModelMatrix(modelMat);
 
+    glm::vec3 particleOrigin = glm::vec3(0.f, 0.f, 0.f);
+    ParticleEmitter& emitter = _particleSystem.AddEmitter(particleOrigin, EmitterType::Quads);
+    emitter.UseVertexShader(_renderer->AddNewVertexShader("Shaders/ParticleShadersQuad.hlsl", "vs_main"));
+    emitter.UseGeometryShader(_renderer->AddNewGeometryShader("Shaders/ParticleShadersQuad.hlsl", "gs_main"));
+   // emitter.UsePixelShader(_renderer->AddNewPixelShader("Shaders/ParticleShadersQuad.hlsl", "ps_main"));
+
+    emitter.UsePixelShader(_renderer->AddNewPixelShader("Shaders/ParticleShadersQuad1Texture.hlsl", "ps_main"));
+    TextureID newTexture = _renderer->AddNewTexture("res/textures/particle1.png");
+    _renderer->CreateShaderResourceViewFromTexture(Renderer::GetTextureByID(newTexture));
+    emitter.UsePixelShaderTexture(newTexture, 0);
+    emitter.UpdateOrigin(_camera._position);
 
 	return 0;
 }
@@ -235,12 +247,24 @@ void Application::Tick()
         _lightDirection.x = direction[0];
         _lightDirection.y = direction[1];
         _lightDirection.z = direction[2];
+
+        //Camera Speed
+        ImGui::Begin("Camera settings");
+        float cameraSpeed = _camera._cameraSpeed;
+        ImGui::SliderFloat("Camera speed", &cameraSpeed, 0.f, 100.f);
+        ImGui::End();
+        if (cameraSpeed != _camera._cameraSpeed)
+        {
+            _camera.SetCameraSpeed(cameraSpeed);
+        }
+
     }
 
 
 
 
 	/* clear the back buffer */
+    // todo: Renderer::tick
     _renderer->SetBackBufferRenderTarget();
     _renderer->ClearBackbufferRTV();
 
@@ -252,21 +276,23 @@ void Application::Tick()
     _renderer->_deviceContext->IASetPrimitiveTopology(
 		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    _renderer->BindBlendState_NoBlend();
+
 
 
     // draw triangle
-    _renderer->SetInputLayoutFromVertexShader(&vertex_shader);
-    _renderer->SetVertexBuffer(&vBufferTri);
+    //_renderer->SetInputLayoutFromVertexShader(&vertex_shader);
+    //_renderer->SetVertexBuffer(&vBufferTri);
 
 	// set the shaders
-    _renderer->SetVertexShader(&vertex_shader);
-    _renderer->SetPixelShader(&pixel_shader);
+    //_renderer->SetVertexShader(&vertex_shader);
+    //_renderer->SetPixelShader(&pixel_shader);
     //_renderer->Draw(&vBufferTri);
 
-    _renderer->SetInputLayoutFromVertexShader(&vertex_shader);
-    _renderer->SetVertexBuffer(&vBufferCube);
-    _renderer->SetVertexShader(&vertex_shader);
-    _renderer->SetPixelShader(&pixel_shader);
+    //_renderer->SetInputLayoutFromVertexShader(&vertex_shader);
+    //_renderer->SetVertexBuffer(&vBufferCube);
+    //_renderer->SetVertexShader(&vertex_shader);
+    //_renderer->SetPixelShader(&pixel_shader);
 
     glm::mat4 view = glm::mat4(1.0f);
     view = _camera.GetViewMatrix();
@@ -280,8 +306,8 @@ void Application::Tick()
     //projection = glm::translate(glm::scale(projection, glm::vec3(0.f, 0.f, 0.5f)), glm::vec3(0.f, 0.f, 0.5f));
     //projection = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.5f)) * glm::scale(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.5f)) * projection;
     
-    _renderer->UpdateViewBuffer(view, projection, glm::vec4(_camera._position, 1.f));
-    _renderer->BindVertexViewBuffer();
+    //_renderer->UpdateViewBuffer(view, projection, glm::vec4(_camera._position, 1.f));
+    //_renderer->BindVertexViewBuffer();
 
     //_renderer->Draw(&vBufferCube);
     
@@ -323,10 +349,14 @@ void Application::Tick()
         _renderer->RenderSSAO();
     //}
     _renderer->RenderLight(_lightDirection);
-    // draw quad
-    //_renderer->DrawFullScreenQuad();
+
+
     _renderer->SetPixelShader(_renderer->GetPixelShaderByID(_renderer->GetSimpleColorPixelShader()));
     _renderer->DrawFullScreenTriangle();
+    _renderer->RenderUnlitParticles(&_particleSystem);
+
+    // draw quad
+    //_renderer->DrawFullScreenQuad();
 
     //_renderer->DrawCube();
 

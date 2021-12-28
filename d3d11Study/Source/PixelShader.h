@@ -1,4 +1,5 @@
 #pragma once
+#include "Shader.h"
 #include <string>
 #include <d3dcompiler.h>
 struct ID3D11PixelShader;
@@ -17,7 +18,7 @@ public:
 	// compile from _filename and _entryPoint, store blob in _blob_ptr
 	void CompileShader();
 
-	// create vertex shader and store in _d3d11_shader
+	// create pixel shader and store in _d3d11_shader
 	void CreatePixelShader(ID3D11Device* device);
 	ID3D11PixelShader* GetD3D11PixelShader() const { return _d3d11_shader; };
 	ID3DBlob* GetD3D11Blob() const { return _blob_ptr; };

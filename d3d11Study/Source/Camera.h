@@ -32,6 +32,7 @@ public:
 	void ProcessMouseInput(float x, float y, bool onlyCacheValues);
 	void ProcessScrollInput(float yOffset, float& fov);
 	glm::mat4 GetViewMatrix() const;
+	void SetCameraSpeed(float cameraSpeed);
 
 private:
 	void UpdateCameraVectors();

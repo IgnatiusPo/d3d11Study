@@ -1,4 +1,5 @@
 #pragma once
+#include "Shader.h"
 #include <string>
 #include <d3dcompiler.h>
 struct ID3D11VertexShader;

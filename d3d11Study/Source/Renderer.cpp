@@ -11,13 +11,19 @@
 
 #include "VertexShader.h"
 #include "PixelShader.h"
+#include "GeometryShader.h"
 #include "Scene.h"
 #include "Camera.h"
 #include <random>
+#include "ParticleSystem.h"
 //Initialize static variables
 VertexBuffer Renderer::quad_vBuffer;
-std::vector<VertexShader>	Renderer::VertexShaders;
-std::vector<PixelShader>	Renderer::PixelShaders;
+std::vector<VertexShader>		Renderer::VertexShaders;
+std::vector<PixelShader>		Renderer::PixelShaders;
+std::vector<GeometryShader>		Renderer::GeometryShaders;
+
+std::vector<Texture>			Renderer::Textures;
+
 
  const float Renderer::quadPosTex[] = { //vertex attributes for a quad that fills the entire screen in NDC.
 	-1.0f, -1.0f, 0.f, 1.f,
@@ -156,6 +162,26 @@ void Renderer::Init(GLFWwindow* window)
 	assert(SUCCEEDED(hr));
 	_deviceContext->RSSetState(_rasterizerState);
 
+	//blend state(s)
+	D3D11_BLEND_DESC blendDesc;
+	blendDesc.AlphaToCoverageEnable = false;
+	blendDesc.IndependentBlendEnable = false;
+	for (int i = 0; i < 8; ++i)
+	{
+		blendDesc.RenderTarget[i].BlendEnable = false; // no blending
+		blendDesc.RenderTarget[i].SrcBlend = D3D11_BLEND_ONE;
+		blendDesc.RenderTarget[i].DestBlend = D3D11_BLEND_ZERO;
+		blendDesc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+		blendDesc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+		blendDesc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+		blendDesc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		blendDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	}
+	_device->CreateBlendState(&blendDesc, &_blendStateNoBlending);
+
+
+
+
 	//create depth-stencil texture
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
@@ -202,6 +228,13 @@ void Renderer::Init(GLFWwindow* window)
 	disabledDepthStencilDesc.StencilEnable = false;
 
 	_device->CreateDepthStencilState(&disabledDepthStencilDesc, &_depthDisabledStencilState);
+
+	D3D11_DEPTH_STENCIL_DESC _depthEnabledWriteDisabledDesc;
+	_depthEnabledWriteDisabledDesc = enabledDepthStencilDesc;
+	_depthEnabledWriteDisabledDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+
+
+	_device->CreateDepthStencilState(&_depthEnabledWriteDisabledDesc, &_depthEnabledWriteDisabled);
 
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthDescView;
 	ZeroMemory(&depthDescView, sizeof(depthDescView));
@@ -310,6 +343,7 @@ void Renderer::Init(GLFWwindow* window)
 		SSAOSrvDesc.Texture2D.MostDetailedMip = 0;
 		SSAOSrvDesc.Texture2D.MipLevels = 1;
 
+		//ssao
 		_device->CreateShaderResourceView(_SSAOTexture, &SSAOSrvDesc, &_SSAO_SRV);
 		//blur
 		_device->CreateShaderResourceView(_BlurTexture, &SSAOSrvDesc, &_Blur_SRV);
@@ -871,6 +905,18 @@ void Renderer::DisableDepthStencil()
 	_deviceContext->OMSetDepthStencilState(_depthDisabledStencilState, 1);
 }
 
+void Renderer::EnableDepthDisableWrite()
+{
+	_deviceContext->OMSetDepthStencilState(_depthEnabledWriteDisabled, 1);
+}
+
+void Renderer::BindBlendState_NoBlend()
+{
+	const FLOAT BlendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
+	UINT SampleMask = 0xffffffff;
+	_deviceContext->OMSetBlendState(_blendStateNoBlending, BlendFactor, SampleMask);
+}
+
 void Renderer::DrawFullScreenQuad()
 {
 	SetInputLayoutFromVertexShader(GetVertexShaderByID(GetNDCVertexShader()));
@@ -926,9 +972,9 @@ void Renderer::SetVertexBuffer(const VertexBuffer* vBuffer)
 
 void Renderer::SetVertexShader(const VertexShader* shader)
 {
-	if (ID3D11VertexShader* vertexShader = shader->GetD3D11VertexShader())
+	if (shader && shader->GetD3D11VertexShader())
 	{
-		_deviceContext->VSSetShader(vertexShader, NULL, 0);
+		_deviceContext->VSSetShader(shader->GetD3D11VertexShader(), NULL, 0);
 	}
 	else
 	{
@@ -938,7 +984,7 @@ void Renderer::SetVertexShader(const VertexShader* shader)
 
 void Renderer::SetPixelShader(const PixelShader* shader)
 {
-	if (ID3D11PixelShader* vertexShader = shader->GetD3D11PixelShader())
+	if (shader && shader->GetD3D11PixelShader())
 	{
 		_deviceContext->PSSetShader(shader->GetD3D11PixelShader(), NULL, 0);
 	}
@@ -948,9 +994,27 @@ void Renderer::SetPixelShader(const PixelShader* shader)
 	}
 }
 
+void Renderer::SetGeometryShader(const GeometryShader* shader)
+{
+	if (shader && shader->GetD3D11GeometryShader())
+	{
+		_deviceContext->GSSetShader(shader->GetD3D11GeometryShader(), NULL, 0);
+	}
+	else
+	{
+		_deviceContext->GSSetShader(NULL, NULL, 0);
+	}
+
+}
+
 void Renderer::SetInputLayoutFromVertexShader(const VertexShader* shader)
 {
 	_deviceContext->IASetInputLayout(shader->GetInputLayout());
+}
+
+void Renderer::SetClampSampler()
+{
+	_deviceContext->PSSetSamplers(0, 1, &_samplerStateClamp);
 }
 
 void Renderer::SetInputLayout(ID3D11InputLayout* layout)
@@ -989,6 +1053,11 @@ void Renderer::BindVertexViewBuffer()
 void Renderer::BindPixelViewBuffer()
 {
 	_deviceContext->PSSetConstantBuffers(0, 1, &_viewBuffer);
+}
+
+void Renderer::BindGeometryViewBuffer()
+{
+	_deviceContext->GSSetConstantBuffers(0, 1, &_viewBuffer);
 }
 
 void Renderer::CreatePerModelBuffer()
@@ -1185,6 +1254,24 @@ void Renderer::BlurPass(ID3D11ShaderResourceView* input, ID3D11ShaderResourceVie
 
 }
 
+void Renderer::RenderUnlitParticles(ParticleSystem* particleSystem)
+{
+	SetBackBufferRenderTarget();
+	ResetViewport();
+	int numberOfEmitters = particleSystem->GetNumberOfEmitters();
+	
+	for (int i = 0; i < numberOfEmitters; ++i)
+	{
+		ParticleEmitter& emitter = particleSystem->GetEmitter(i);
+
+		emitter.PreDraw(this);
+		emitter.Draw(this);
+		emitter.PostDraw(this);
+	}
+	EnableDepthStencil();
+
+}
+
 ShaderID Renderer::GetNDCVertexShader()
 {
 	if (vertexShaderNDC != InvalidShaderID)
@@ -1290,7 +1377,7 @@ ShaderID Renderer::GetDefaultModelVertexShader()
 		return _vertexShaderDefaultModel;
 	}
 
-	ShaderID NewID = (ShaderID)Renderer::PixelShaders.size();
+	ShaderID NewID = (ShaderID)Renderer::VertexShaders.size();
 
 	VertexShader shader("Shaders/ShadersDeferred.hlsl", "vs_main");
 	shader.CompileShader();
@@ -1400,6 +1487,60 @@ ShaderID Renderer::GetVerticalBlurPixelShader()
 	return NewID;
 }
 
+ShaderID Renderer::AddNewPixelShader(const std::string& filename, const std::string& entryPoint)
+{
+	ShaderID NewID = (ShaderID)Renderer::PixelShaders.size();
+
+	PixelShader shader(filename, entryPoint);
+	shader.CompileShader();
+	shader.CreatePixelShader(_device);
+
+	Renderer::PixelShaders.push_back(shader);
+	return NewID;
+}
+
+ShaderID Renderer::AddNewVertexShader(const std::string& filename, const std::string& entryPoint)
+{
+	ShaderID NewID = (ShaderID)Renderer::VertexShaders.size();
+
+	VertexShader shader(filename, entryPoint);
+	shader.CompileShader();
+	shader.CreateVertexShader(_device);
+
+	Renderer::VertexShaders.push_back(shader);
+	return NewID;
+
+}
+
+ShaderID Renderer::AddNewGeometryShader(const std::string& filename, const std::string& entryPoint)
+{
+	ShaderID NewID = (ShaderID)Renderer::GeometryShaders.size();
+
+	GeometryShader shader(filename, entryPoint);
+	shader.CompileShader();
+	shader.CreateGeometryShader(_device);
+
+	Renderer::GeometryShaders.push_back(shader);
+	return NewID;
+
+}
+
+TextureID Renderer::AddNewTexture(const std::string& filename)
+{
+	TextureID NewID = (TextureID)Renderer::Textures.size();
+
+	Texture texture;
+	texture.Init(_device, filename);
+
+	Renderer::Textures.push_back(texture);
+	return NewID;
+}
+
+ID3D11ShaderResourceView* Renderer::CreateShaderResourceViewFromTexture(Texture* texture)
+{
+	return texture->CreateShaderResourceView(_device);
+}
+
 void Renderer::SetupLightingParameters(ShaderID PixelShaderID, const glm::vec3& lightDirection)
 {
 	PixelShader* pixelShader = GetPixelShaderByID(PixelShaderID);
@@ -1476,4 +1617,25 @@ PixelShader* Renderer::GetPixelShaderByID(ShaderID ID)
 		return nullptr;
 	}
 	return &Renderer::PixelShaders[ID];
+}
+
+GeometryShader* Renderer::GetGeometryShaderByID(ShaderID ID)
+{
+	if (ID >= Renderer::GeometryShaders.size())
+	{
+		assert(false);
+		return nullptr;
+	}
+	return &Renderer::GeometryShaders[ID];
+}
+
+Texture* Renderer::GetTextureByID(TextureID ID)
+{
+	if (ID >= Renderer::Textures.size())
+	{
+		assert(false);
+		return nullptr;
+	}
+	return &Renderer::Textures[ID];
+
 }

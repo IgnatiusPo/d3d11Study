@@ -1,6 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include "Scene.h"
+#include "ParticleSystem.h"
 class Renderer;
 class Application
 {
@@ -15,6 +16,7 @@ class Application
 	struct GLFWwindow* _window;
 	Renderer* _renderer;
 	Scene _scene;
+	ParticleSystem _particleSystem;
 	float _wWidth = 1920.f, _wHeight = 1080.f;
 	float _deltaTime = 0.f;
 	float _lastFrame = 0.f;

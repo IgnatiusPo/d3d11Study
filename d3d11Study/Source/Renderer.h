@@ -2,6 +2,9 @@
 #include "VertexBuffer.h"
 #include <vector>
 #include "glm/glm.hpp"
+#include <string>
+#include "Shader.h"
+#include "Texture.h"
 enum class GBufferType
 {
 	Color,
@@ -14,11 +17,11 @@ struct GLFWwindow;
 class VertexBuffer;
 class VertexShader;
 class PixelShader;
+class GeometryShader;
 class Scene;
 class Camera;
-using ShaderID = int32_t;
 using MaterialID = int32_t;
-const ShaderID InvalidShaderID = -1;
+class ParticleSystem;
 class Renderer
 {
 
@@ -38,6 +41,8 @@ public:
 	void SetSSAORenderTarget();
 	void EnableDepthStencil();
 	void DisableDepthStencil();
+	void EnableDepthDisableWrite();
+	void BindBlendState_NoBlend();
 
 	// note: z-value of these would be 1.f, so make sure to disable depth test if you need overlayed fullscreen pass
 	void DrawFullScreenQuad();
@@ -49,8 +54,11 @@ public:
 	void SetVertexBuffer(const VertexBuffer* vBuffer);
 	void SetVertexShader(const VertexShader* shader = nullptr);
 	void SetPixelShader(const PixelShader* shader = nullptr);
+	void SetGeometryShader(const GeometryShader* shader = nullptr);
 	void SetInputLayout(ID3D11InputLayout* layout);
 	void SetInputLayoutFromVertexShader(const VertexShader* shader);
+
+	void SetClampSampler();
 
 	struct View
 	{
@@ -71,6 +79,7 @@ public:
 	void UpdateViewBuffer(const glm::mat4& view, const glm::mat4& projection, const glm::vec4& viewWorldPos);
 	void BindVertexViewBuffer();
 	void BindPixelViewBuffer();
+	void BindGeometryViewBuffer();
 
 	void CreatePerModelBuffer();
 	void UpdatePerModelBuffer(const glm::mat4& model);
@@ -91,6 +100,7 @@ public:
 	void RenderLight(const glm::vec3& lightDirection);
 	void RenderSSAO();
 	void BlurPass(struct ID3D11ShaderResourceView* input, struct ID3D11ShaderResourceView*& output, struct ID3D11RenderTargetView* freeRTV = nullptr, struct ID3D11ShaderResourceView* freeSRVOut = nullptr);
+	void RenderUnlitParticles(ParticleSystem* particleSystem);
 public:
 	// shaders
 	ShaderID GetNDCVertexShader();
@@ -103,6 +113,12 @@ public:
 	ShaderID GetSimpleBlurPixelShader();
 	ShaderID GetHorizontalBlurPixelShader();
 	ShaderID GetVerticalBlurPixelShader();
+	ShaderID AddNewPixelShader(const std::string& filename, const std::string& entryPoint);
+	ShaderID AddNewVertexShader(const std::string& filename, const std::string& entryPoint);
+	ShaderID AddNewGeometryShader(const std::string& filename, const std::string& entryPoint);
+
+	TextureID AddNewTexture(const std::string& filename);
+	ID3D11ShaderResourceView* CreateShaderResourceViewFromTexture(Texture* texture);
 
 private:
 	void SetupLightingParameters(ShaderID PixelShaderID, const glm::vec3& lightDirection);
@@ -121,8 +137,11 @@ public:
 	ShaderID _pixelShaderVerticalBlur = InvalidShaderID;
 
 
-	VertexShader* GetVertexShaderByID(ShaderID ID);
-	PixelShader*	 GetPixelShaderByID(ShaderID ID);
+	static VertexShader*	 GetVertexShaderByID(ShaderID ID);
+	static PixelShader*	 GetPixelShaderByID(ShaderID ID);
+	static GeometryShader*	 GetGeometryShaderByID(ShaderID ID);
+
+	static Texture*		 GetTextureByID(TextureID ID);
 
 
 	struct ID3D11Device* _device;
@@ -132,12 +151,15 @@ public:
 
 	struct ID3D11DepthStencilState* _depthEnabledStencilState;
 	struct ID3D11DepthStencilState* _depthDisabledStencilState;
+	struct ID3D11DepthStencilState* _depthEnabledWriteDisabled;
 	struct ID3D11DepthStencilView* _depthStencilView;
 	struct ID3D11ShaderResourceView* _depthStencilSRV;
 	struct ID3D11Texture2D* _depthStencilBuffer;
 
 
 	struct ID3D11RasterizerState* _rasterizerState;
+
+	struct ID3D11BlendState* _blendStateNoBlending;
 
 	struct ID3D11Texture2D*				_GBufferTextureArray[(int)GBufferType::Num];
 	struct ID3D11RenderTargetView*		_GBufferRenderTargetViewArray[(int)GBufferType::Num];
@@ -191,6 +213,9 @@ public:
 
 	static float background_colour[4];
 
-	static std::vector<VertexShader>	VertexShaders;
-	static std::vector<PixelShader>		PixelShaders;
+	static std::vector<VertexShader>		VertexShaders;
+	static std::vector<PixelShader>			PixelShaders;
+	static std::vector<GeometryShader>		GeometryShaders;
+
+	static std::vector<Texture>				Textures;
 };

@@ -97,6 +97,10 @@ glm::mat4 Camera::GetViewMatrix() const
 {
 	return myLookAt(_position, _position + _forward, _up);
 }
+void Camera::SetCameraSpeed(float cameraSpeed)
+{
+	_cameraSpeed = cameraSpeed;
+}
 glm::mat4 myLookAt(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up)
 {
 	glm::vec3 zAxis = glm::normalize(center - eye);
